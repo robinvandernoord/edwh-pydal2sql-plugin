@@ -6,10 +6,27 @@ from pydal2sql_core import core_create, core_alter
 
 from pydal2sql_core.types import SUPPORTED_DATABASE_TYPES_WITH_ALIASES
 
-
 # todo:
 #  - other settings,
 #  - edwh migration boilerplate around core output
+
+# MIGRATE_TEMPLATE = """
+# @migration
+# def {project}_{change_description}_{date}_{num}(db: DAL):
+#     db.executesql(
+#         \"\"\"\n{sql}\n\"\"\"
+#     )
+#     return True
+# """
+
+MIGRATE_TEMPLATE = """
+@migration
+def example_migration_001(db: DAL):
+    db.executesql(
+        \"\"\"\n{sql}\n\"\"\"
+    )
+    return True
+"""
 
 
 @task(
@@ -37,6 +54,7 @@ def create(
     noop: bool = False,
     verbose: bool = False,
     function: Optional[str] = None,
+    edwh_boilerplate: bool = True,
 ):
     """
     Write CREATE TABLE statements for one or more tables in 'filename'.
@@ -45,9 +63,17 @@ def create(
     `edwh pydal2sql.create <filename>[@git-branch-or-commit-hash] [--options]`
     `ew pydal2sql.create - < myfile.py`
     """
-    return core_create(
+
+    print(edwh_boilerplate)
+
+    sql = core_create(
         filename, magic=magic, tables=tables, db_type=db_type, noop=noop, verbose=verbose, function=function
     )
+
+    if edwh_boilerplate:
+        print(MIGRATE_TEMPLATE.format(sql=sql))
+    else:
+        print(sql)
 
 
 @task(
@@ -77,6 +103,7 @@ def alter(
     noop: bool = False,
     verbose: bool = False,
     function: Optional[str] = None,
+    edwh_boilerplate: bool = True,
 ):
     """
     Write migration logic (CREATE TABLE, ALTER TABLE) from the state is it is in file_before to the state as it is in file_after.
@@ -88,8 +115,9 @@ def alter(
     Using '-' instead of a filename allows you to read from stdin:
     `ew pydal2sql.alter - models.py` < old_file.py`
     """
+    print(edwh_boilerplate)
 
-    return core_alter(
+    sql = core_alter(
         file_before,
         file_after,
         magic=magic,
@@ -99,3 +127,8 @@ def alter(
         verbose=verbose,
         function=function,
     )
+
+    if edwh_boilerplate:
+        print(MIGRATE_TEMPLATE.format(sql=sql))
+    else:
+        print(sql)
